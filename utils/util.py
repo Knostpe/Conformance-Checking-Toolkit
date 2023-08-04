@@ -1,51 +1,57 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 import pm4py
+from PIL import Image
 from pm4py.visualization.petri_net import visualizer as vis
 from pm4py.visualization.petri_net.variants import token_decoration_frequency as tdf
 from pm4py.visualization.petri_net.variants import token_decoration_performance as tdp
 import base64
 
+def csv_prep(log_csv):
+    log_csv = renumerate_case_ids(log_csv)
+    log_csv['time:timestamp'] = pd.to_datetime(log_csv['time:timestamp'], format='mixed')
+    log_csv = log_csv.sort_values(by='time:timestamp', ascending=True)
+    log_csv['event_count'] = log_csv.groupby('case:concept:name').cumcount() + 1
+    log_csv['case:concept:name'] = log_csv['case:concept:name'].astype(np.int64)
+    log_csv = log_csv.sort_values(by=['case:concept:name', 'event_count'], ascending=True)
+    log_csv['case:concept:name'] = log_csv['case:concept:name'].astype(str)
+    log_csv = log_csv[['case:concept:name', 'concept:name', 'time:timestamp', 'event_count']]
+    return log_csv
+
+
+def renumerate_case_ids(data_frame, case_id_column='case:concept:name'):
+    # Get the distinct case IDs
+    distinct_case_ids = data_frame[case_id_column].unique()
+
+    # Create a mapping dictionary to renumerate the case IDs
+    case_id_mapping = {case_id: str(i + 1) for i, case_id in enumerate(distinct_case_ids)}
+
+    # Replace the case IDs in the DataFrame with the renumerate values
+    data_frame[case_id_column] = data_frame[case_id_column].map(case_id_mapping)
+
+    return data_frame
+
 def model_viz(image, zoom=None):
     """Displays the given image with optional size and zoom customization."""
     st.image(image)
 
-
-def fitness_calc(algorithm, log, pn, im, fm):
-    if algorithm == 'alignment':
-        fitness = pm4py.fitness_token_based_replay(log, pn, im, fm)
-    elif algorithm == 'token replay':
-        fitness = pm4py.fitness_alignments(log, pn, im, fm)
-    else:
-        fitness = None
+def fitness_calc(log, pn, im, fm):
+    fitness = pm4py.fitness_token_based_replay(log, pn, im, fm)
     return fitness
 
-def fitness_compare_calc(algorithm, log, pn, im, fm):
+def fitness_compare_calc(log, pn, im, fm):
 
-    fitness_df = None
+    alignment_result = pm4py.conformance_diagnostics_alignments(log, pn, im, fm)
 
-    if algorithm == 'alignment':
-        alignment_result = pm4py.conformance_diagnostics_alignments(log, pn, im, fm)
+    alignment_fitness = {}
+    for i, trace in enumerate(alignment_result):
+        fitness_value = trace['fitness']
+        case_id = f'Case {i + 1}'
+        alignment_fitness[case_id] = fitness_value
 
-        alignment_fitness = {}
-        for i, trace in enumerate(alignment_result):
-            fitness_value = trace['fitness']
-            case_id = f'Case {i + 1}'
-            alignment_fitness[case_id] = fitness_value
-
-        fitness_df = pd.DataFrame.from_dict(alignment_fitness, orient='index', columns=['Alignment Fitness'])
-
-    if algorithm == 'token replay':
-        token_replay_result = pm4py.conformance_diagnostics_token_based_replay(log, pn, im, fm)
-
-        token_replay_fitness = {}
-        for i, trace in enumerate(token_replay_result):
-            fitness_value = trace['trace_fitness']
-            case_id = f'Case {i + 1}'
-            token_replay_fitness[case_id] = fitness_value
-
-        fitness_df = pd.DataFrame.from_dict(token_replay_fitness, orient='index', columns=['Token Replay Fitness'])
+    fitness_df = pd.DataFrame.from_dict(alignment_fitness, orient='index', columns=['Alignment Fitness'])
 
     return fitness_df
 
@@ -94,30 +100,58 @@ def plot_compare_calc(df):
     # Get the column name from the dataframe
     column_name = df.columns[0]
 
-    # Define custom colors for markers
-    marker_color = 'blue'
+    # Calculate median and average fitness values
+    median_fitness = df[column_name].median()
+    average_fitness = df[column_name].mean()
 
-    # Create the scatter trace
+    # Define custom colors for markers and lines
+    marker_color = 'blue'
+    line_color = 'red'
+
+    # Create the scatter trace for data points
     scatter_trace = go.Scatter(
         x=df.index,
         y=df[column_name],
         mode='markers',
         marker=dict(color=marker_color),
+        name='Fitness Data',
+        text=df[column_name],  # Hover text for data points (fitness values)
+    )
+
+    # Create the line traces for median and average fitness
+    median_trace = go.Scatter(
+        x=[df.index[0], df.index[-1]],
+        y=[median_fitness, median_fitness],
+        mode='lines',
+        line=dict(color=line_color, dash='dash'),
+        name='Median Fitness',
+        hoverinfo='text',  # Show hover info for the line
+        hovertext=[f"Median Fitness: {median_fitness:.2f}"] * 2,  # Custom hover text for the line
+    )
+
+    average_trace = go.Scatter(
+        x=[df.index[0], df.index[-1]],
+        y=[average_fitness, average_fitness],
+        mode='lines',
+        line=dict(color=line_color),
+        name='Average Fitness',
+        hoverinfo='text',  # Show hover info for the line
+        hovertext=[f"Average Fitness: {average_fitness:.2f}"] * 2,  # Custom hover text for the line
     )
 
     # Create the layout
     layout = go.Layout(
-        title='Fitness distribution',
+        title='Conformance Checking Results - Fitness Value per Case',
         xaxis=dict(title='Case ID'),
         yaxis=dict(title=column_name),
         hovermode='closest',
         plot_bgcolor='white',
     )
 
-    # Create the figure and add the scatter trace
-    fig = go.Figure(data=[scatter_trace], layout=layout)
+    # Create the figure and add the traces
+    fig = go.Figure(data=[scatter_trace, median_trace, average_trace], layout=layout)
 
-    # Update marker style
+    # Update marker style for data points
     fig.update_traces(marker=dict(size=10, symbol='circle', line=dict(width=1, color=marker_color)))
 
     # Update axis style
@@ -127,5 +161,248 @@ def plot_compare_calc(df):
     # Update title style
     fig.update_layout(title_font=dict(size=16, family='Arial', color='black')) #IBM Plex Sans
 
-    # Display the Plotly figure
+    # Display the Plotly figure using Streamlit
     st.plotly_chart(fig)
+
+def plot_distribution(log_csv, x_axis='events', color_by_event_type=False, show_deviations=False):
+
+    if x_axis == 'time':
+        x_axis_label = 'Timestamp'
+        x_tickformat = '%Y-%m-%d'  # Display year-month-day format
+    elif x_axis == 'events':
+        # Count the number of events per case and create a new DataFrame
+        log_csv['event_count'] = log_csv.groupby('case:concept:name').cumcount() + 1
+
+        x_axis_label = 'Number of Events'
+        x_tickformat = None
+
+    # Create a color map for event types (only if color_by_event_type is True)
+    color_map = None
+    if color_by_event_type:
+        event_types = log_csv['concept:name'].unique()
+        color_palette = ['blue', 'green', 'red', 'orange', 'purple', 'pink', 'brown', 'gray', 'olive', 'cyan']
+        color_map = dict(zip(event_types, color_palette))
+
+    # Create separate traces for deviations and conformant events (only if show_deviations is True)
+    scatter_traces = []
+
+    if show_deviations:
+
+        conformant_events = log_csv[(~log_csv['missing']) & (~log_csv['is_deviation'])]
+        deviation_events = log_csv[log_csv['is_deviation']]
+
+        conformant_trace = go.Scatter(
+            x=(conformant_events['time:timestamp'] if x_axis == "time" else conformant_events['event_count']),
+            y=conformant_events['case:concept:name'].astype(str),
+            mode='markers',
+            marker=dict(color='blue', size=10, symbol='circle'),
+            name='Conformant Events',
+            text=conformant_events['concept:name'],  # Hover text for conformant event points
+            customdata=conformant_events['time:timestamp'],
+            hovertemplate='<b>Date:</b> %{customdata|%Y-%m-%d}<br>' + '<b>Time:</b> %{customdata|%H:%M:%S}<br>' + '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Conformant',
+            legendgroup='Conformant Events',
+        )
+        scatter_traces.append(conformant_trace)
+
+        deviation_trace = go.Scatter(
+            x=(deviation_events['time:timestamp'] if x_axis == "time" else deviation_events['event_count']),
+            y=deviation_events['case:concept:name'].astype(str),
+            mode='markers',
+            marker=dict(color='red', size=10, symbol='x'),
+            name='Deviating Events',
+            text=deviation_events['concept:name'],  # Hover text for deviation points
+            customdata=deviation_events['time:timestamp'],
+            hovertemplate='<b>Date:</b> %{customdata|%Y-%m-%d}<br>' + '<b>Time:</b> %{customdata|%H:%M:%S}<br>' + '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Deviating',
+            legendgroup='Deviating Events',
+        )
+        scatter_traces.append(deviation_trace)
+
+        if x_axis == 'events':
+            missing_events = log_csv[log_csv['missing']]
+            missing_trace = go.Scatter(
+                x=(missing_events['time:timestamp'] if x_axis == "time" else missing_events['event_count']),
+                y=missing_events['case:concept:name'].astype(str),
+                mode='markers',
+                marker=dict(color='gray', size=10, symbol='square'),
+                name='Missing Events',
+                text=missing_events['concept:name'],  # Hover text for deviation points
+                hovertemplate='<b>Date:</b> None<br>' + '<b>Time:</b> None<br>' + '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Missing',
+                legendgroup='Missing Events',
+            )
+            scatter_traces.append(missing_trace)
+
+    # Create separate traces for each event type (only if color_by_event_type is True)
+    if color_by_event_type:
+        for event_type in event_types:
+            color = color_map[event_type]
+            log_event_type = log_csv[log_csv['concept:name'] == event_type]
+            trace = go.Scatter(
+                x=(log_event_type['time:timestamp'] if x_axis == "time" else log_event_type['event_count']),
+                y=log_csv[log_csv['concept:name'] == event_type]['case:concept:name'].astype(str),
+                mode='markers',
+                marker=dict(color=color, size=10),
+                name=event_type,
+                text=log_csv[log_csv['concept:name'] == event_type]['concept:name'],  # Hover text for data points (event_type values)
+                hovertemplate= '<b>Date:</b> %{customdata[0]|%Y-%m-%d} <br>' + '<b>Time:</b> %{customdata[0]|%H:%M:%S}<br>' + '<b>Event Type:</b> %{text}<br>' + '<b>Conformant:</b> %{customdata[1]}',
+                customdata=np.stack((log_event_type['time:timestamp'], ['No' if is_deviation else 'Yes' for is_deviation in log_event_type['is_deviation']]), axis=-1),
+                legendgroup=event_type,
+            )
+            scatter_traces.append(trace)
+
+    # Create the layout
+    layout = go.Layout(
+        title=f'{"Temporal" if x_axis == "time" else "Event"} Case Model Abstraction',
+        xaxis=dict(title=x_axis_label, tickformat=x_tickformat),
+        yaxis=dict(title='Case ID'),
+        hovermode='closest',
+        plot_bgcolor='white',
+        )
+
+    # Create the figure and add the traces
+    fig = go.Figure(data=scatter_traces, layout=layout)
+
+    # Update axis style
+    fig.update_xaxes(showgrid=True, gridcolor='lightgray')
+    fig.update_yaxes(showgrid=True, gridcolor='lightgray')
+
+    # Update title style
+    fig.update_layout(title_font=dict(size=16, family='Arial', color='black'))
+
+    # Display the Plotly figure using Streamlit
+    st.plotly_chart(fig)
+
+def find_deviations(log_csv, pn, im, fm):
+    diagnostics = pm4py.conformance_diagnostics_alignments(log_csv, pn, im, fm, activity_key='concept:name', case_id_key='case:concept:name', timestamp_key='time:timestamp')
+
+    deviations_by_case = collect_deviations(diagnostics)
+    log_csv_modified = missing_check(log_csv, deviations_by_case)
+    log_csv_modified = deviation_check(log_csv_modified, deviations_by_case)
+
+    return log_csv_modified
+
+# Function to filter out tuples with None values in 'alignment'
+def filter_alignment(alignment_list):
+    return [(event, value) for event, value in alignment_list if value is not None]
+
+def collect_deviations(diagnostics):
+
+    filtered_diagnostics = [{k: filter_alignment(v) if k == 'alignment' else v for k, v in d.items()} for d in
+                            diagnostics]
+    deviations_by_case = {}
+    current_case_id = 1
+
+    for entry in filtered_diagnostics:
+        alignment = entry['alignment']
+        current_deviations = []
+        current_event_id = 1
+
+        for event, value in alignment:
+            if event == '>>' or value == '>>':
+                current_deviations.append((current_event_id, (event, value)))
+            current_event_id += 1
+
+        deviations_by_case[current_case_id] = current_deviations
+        current_case_id += 1
+
+    return deviations_by_case
+
+def missing_check(log_csv, deviations_by_case):
+    # Flatten the deviations_by_case dictionary to a list of tuples with case_id and deviation
+    missing_events = {k: [(x, y) for x, y in v if y[0] == '>>'] for k, v in deviations_by_case.items()}
+    missing_events = [(case_id, deviation) for case_id, deviations in missing_events.items() for deviation in
+                      deviations]
+
+    result_df = pd.DataFrame(columns=log_csv.columns)
+    result_df['missing'] = None
+    current_id = 1
+    current_case_id = 1
+    current_event_id = 1
+    ticker = 0
+    (alignment_case_id, (alignment_event_id, alignment)) = missing_events[0]
+
+    for i, event in log_csv.iterrows():
+
+        if event[0] != str(current_case_id):
+            current_case_id = int(event[0])
+            current_event_id = 1
+            ticker = 0
+
+        if str(alignment_case_id) == event[0] and alignment_event_id == (event[3] + ticker):
+            result_df.loc[current_id] = [str(current_case_id), alignment[1], pd.Timestamp(None), current_event_id, True]
+            missing_events.pop(0)
+            if (len(missing_events) > 0):
+                (alignment_case_id, (alignment_event_id, alignment)) = missing_events[0]
+            current_event_id += 1
+            current_id += 1
+            ticker += 1
+            result_df.loc[current_id] = event.tolist()[0:-1] + [current_event_id, False]
+        else:
+            result_df.loc[current_id] = event.tolist()[0:-1] + [current_event_id, False]
+
+        current_event_id += 1
+        current_id += 1
+
+    while len(missing_events) > 0:
+        (alignment_case_id, (alignment_event_id, alignment)) = missing_events[0]
+        result_df.loc[current_id] = [str(current_case_id), alignment[1], pd.Timestamp(None), current_event_id, True]
+        current_event_id += 1
+        current_id += 1
+        missing_events.pop(0)
+
+    return result_df
+
+
+def deviation_check(log_csv, deviations_by_case):
+    # Flatten the deviations_by_case dictionary to a list of tuples with case_id and deviation
+    deviations = {k: [(x, y) for x, y in v if y[1] == '>>'] for k, v in deviations_by_case.items()}
+    deviations = [(case_id, deviation) for case_id, deviations in deviations.items() for deviation in deviations]
+
+    # Create an empty DataFrame to store the result
+    result_df = log_csv.copy()
+    result_df['is_deviation'] = False
+
+    for (alignment_case_id, (alignment_event_id, alignment)) in deviations:
+        condition = (result_df['case:concept:name'] == str(alignment_case_id)) & (result_df['event_count'] == alignment_event_id)
+        result_df.loc[condition, 'is_deviation'] = True
+
+    return result_df
+
+def get_log(uploaded_log, sep, timestamp_format = None):
+    if uploaded_log[-3:] == 'xes':
+        log = pm4py.read_xes(uploaded_log)
+        log_csv = pm4py.convert_to_dataframe(log)
+
+    elif uploaded_log[-3:] == 'csv':
+        log_csv = pm4py.format_dataframe(pd.read_csv(uploaded_log, sep=sep), case_id='case:concept:name',
+                                         activity_key='concept:name', timestamp_key='time:timestamp')
+    else:
+        st.error('You need to upload either a csv or xes file as event log', icon="🚨")
+
+    log_csv = csv_prep(log_csv)
+    log = pm4py.convert_to_event_log(log_csv)
+
+    log_csv_show = log_csv.rename(
+        columns={'case:concept:name': 'CaseID', 'concept:name': 'Event Type', 'time:timestamp': 'Timestamp',
+                 'event_count': 'EventID'})
+
+    if timestamp_format is not None:
+        log_csv_show['Timestamp'] = log_csv_show['Timestamp'].dt.strftime(timestamp_format)
+
+    return log, log_csv, log_csv_show
+
+def get_model(uploaded_model):
+
+    if isinstance(uploaded_model, str):
+        model_filename = uploaded_model  # If 'demo' mode, 'uploaded_model' is already a string.
+    else:
+        model_filename = uploaded_model.name  # If 'file_uploader' mode, get the filename.
+
+    pn, im, fm = pm4py.read_pnml('data/models/' + model_filename)
+    try:
+        image1 = Image.open('data/images/' + model_filename[:-4] + 'png')
+    except FileNotFoundError:
+        pm4py.save_vis_petri_net(pn, im, fm, 'data/images/' + model_filename[:-4] + 'png')
+        image1 = Image.open('data/images/' + model_filename[:-4] + 'png')
+
+    return  pn, im, fm, image1
+
