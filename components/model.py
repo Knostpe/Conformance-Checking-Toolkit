@@ -17,7 +17,7 @@ class Model(Dashboard.Item):
             images_b64 = [b64encode(bytes).decode() for bytes in image_bytes]
 
             # Construct the path to the image within the data directory
-            image_path = "data/images/running_example.png"
+            image_path = "https://github.com/Knostpe/thesis-test/blob/master/data/images/running_example.png?raw=true"
 
             with mui.Paper(key=self._key,
                            sx={"display": "flex", "flexDirection": "column", "borderRadius": 3, "overflow": "hidden"},
