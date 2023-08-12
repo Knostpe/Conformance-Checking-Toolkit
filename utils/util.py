@@ -9,6 +9,45 @@ from pm4py.visualization.petri_net.variants import token_decoration_frequency as
 from pm4py.visualization.petri_net.variants import token_decoration_performance as tdp
 import base64
 
+def get_log(uploaded_log, sep, timestamp_format = None):
+    if uploaded_log[-3:] == 'xes':
+        log = pm4py.read_xes(uploaded_log)
+        log_csv = pm4py.convert_to_dataframe(log)
+
+    elif uploaded_log[-3:] == 'csv':
+        log_csv = pm4py.format_dataframe(pd.read_csv(uploaded_log, sep=sep), case_id='case:concept:name',
+                                         activity_key='concept:name', timestamp_key='time:timestamp')
+    else:
+        st.error('You need to upload either a csv or xes file as event log', icon="🚨")
+
+    log_csv = csv_prep(log_csv)
+    log = pm4py.convert_to_event_log(log_csv)
+
+    log_csv_show = log_csv.rename(
+        columns={'case:concept:name': 'CaseID', 'concept:name': 'Event Type', 'time:timestamp': 'Timestamp',
+                 'event_count': 'EventID'})
+
+    if timestamp_format is not None:
+        log_csv_show['Timestamp'] = log_csv_show['Timestamp'].dt.strftime(timestamp_format)
+
+    return log, log_csv, log_csv_show
+
+def get_model(uploaded_model):
+
+    if isinstance(uploaded_model, str):
+        model_filename = uploaded_model  # If 'demo' mode, 'uploaded_model' is already a string.
+    else:
+        model_filename = uploaded_model.name  # If 'file_uploader' mode, get the filename.
+
+    pn, im, fm = pm4py.read_pnml('data/models/' + model_filename)
+    try:
+        image1 = Image.open('data/images/' + model_filename[:-4] + 'png')
+    except FileNotFoundError:
+        pm4py.save_vis_petri_net(pn, im, fm, 'data/images/' + model_filename[:-4] + 'png')
+        image1 = Image.open('data/images/' + model_filename[:-4] + 'png')
+
+    return  pn, im, fm, image1
+
 def csv_prep(log_csv):
     log_csv = renumerate_case_ids(log_csv)
     log_csv['time:timestamp'] = pd.to_datetime(log_csv['time:timestamp'], format='mixed')
@@ -67,11 +106,33 @@ def performance_viz(log, pn, im, fm):
     pn_decorated_perf = tdp.apply(pn, im, fm, log)
     st.graphviz_chart(pn_decorated_perf)
 
-def fitness_viz(fitness):
-    col1, col2, col3 = st.columns(3)
+def fitness_viz(log_csv, log, pn, im, fm):
+
+    fitness = fitness_calc(log, pn, im, fm)
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    labels = ["Conformant Events", "Deviating Events", "Missing Events"]
+    values = [len(log_csv[(~log_csv['missing']) & (~log_csv['is_deviation'])]),
+              len(log_csv[log_csv['is_deviation']]),
+              len(log_csv[log_csv['missing']])]
+
     col1.metric("Log Fitness", round(fitness['log_fitness'], 2), "")
+    col1.metric(labels[0], values[0], "")
+
     col2.metric("Avg Trace Fitness", round(fitness['average_trace_fitness'], 2), "")
+    col2.metric(labels[1], values[1], "")
+
     col3.metric("% of Fitting Traces", round(fitness['percentage_of_fitting_traces'], 2), "")
+    col3.metric(labels[2], values[2], "")
+
+    with col4:
+        #Create a pie chart using Plotly Express
+        st.write("")
+        fig = go.Figure(data=[go.Pie(values=values,labels=labels, hoverinfo='label+percent', hole=0.5)])
+        fig.update_layout(showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+        st.write("")
 
 def render_svg(svg, width=None, height=None, zoom=None, open_in_new_tab=False):
     """Renders the given SVG string with optional size, zoom, and open in new tab customization."""
@@ -271,8 +332,8 @@ def plot_distribution(log_csv, x_axis='events', color_by_event_type=False, show_
     # Display the Plotly figure using Streamlit
     st.plotly_chart(fig)
 
-def find_deviations(log_csv, pn, im, fm):
-    diagnostics = pm4py.conformance_diagnostics_alignments(log_csv, pn, im, fm, activity_key='concept:name', case_id_key='case:concept:name', timestamp_key='time:timestamp')
+def find_deviations(log_csv, log, pn, im, fm):
+    diagnostics = pm4py.conformance_diagnostics_alignments(log, pn, im, fm, activity_key='concept:name', case_id_key='case:concept:name', timestamp_key='time:timestamp')
 
     deviations_by_case = collect_deviations(diagnostics)
     log_csv_modified = missing_check(log_csv, deviations_by_case)
@@ -366,43 +427,4 @@ def deviation_check(log_csv, deviations_by_case):
         result_df.loc[condition, 'is_deviation'] = True
 
     return result_df
-
-def get_log(uploaded_log, sep, timestamp_format = None):
-    if uploaded_log[-3:] == 'xes':
-        log = pm4py.read_xes(uploaded_log)
-        log_csv = pm4py.convert_to_dataframe(log)
-
-    elif uploaded_log[-3:] == 'csv':
-        log_csv = pm4py.format_dataframe(pd.read_csv(uploaded_log, sep=sep), case_id='case:concept:name',
-                                         activity_key='concept:name', timestamp_key='time:timestamp')
-    else:
-        st.error('You need to upload either a csv or xes file as event log', icon="🚨")
-
-    log_csv = csv_prep(log_csv)
-    log = pm4py.convert_to_event_log(log_csv)
-
-    log_csv_show = log_csv.rename(
-        columns={'case:concept:name': 'CaseID', 'concept:name': 'Event Type', 'time:timestamp': 'Timestamp',
-                 'event_count': 'EventID'})
-
-    if timestamp_format is not None:
-        log_csv_show['Timestamp'] = log_csv_show['Timestamp'].dt.strftime(timestamp_format)
-
-    return log, log_csv, log_csv_show
-
-def get_model(uploaded_model):
-
-    if isinstance(uploaded_model, str):
-        model_filename = uploaded_model  # If 'demo' mode, 'uploaded_model' is already a string.
-    else:
-        model_filename = uploaded_model.name  # If 'file_uploader' mode, get the filename.
-
-    pn, im, fm = pm4py.read_pnml('data/models/' + model_filename)
-    try:
-        image1 = Image.open('data/images/' + model_filename[:-4] + 'png')
-    except FileNotFoundError:
-        pm4py.save_vis_petri_net(pn, im, fm, 'data/images/' + model_filename[:-4] + 'png')
-        image1 = Image.open('data/images/' + model_filename[:-4] + 'png')
-
-    return  pn, im, fm, image1
 

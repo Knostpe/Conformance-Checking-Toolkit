@@ -1,6 +1,10 @@
+# Core
 streamlit
 pandas
 plost
 plotly
 pm4py
 
+# Streamlit components
+streamlit-option-menu
+streamlit-elements

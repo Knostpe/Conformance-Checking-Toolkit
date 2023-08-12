@@ -1,24 +1,15 @@
-#from streamlit_elements import elements, mui, html, lazy, sync, editor
 import streamlit as st
-import pandas as pd
-import streamlit.components.v1 as components
-import json
-import pandas as pd
-from PIL import Image
+from streamlit_option_menu import option_menu
 import pm4py
 import utils.util as Util
+import components.run_dashboard as Dash
 
-st.set_page_config(layout='wide', initial_sidebar_state='expanded')
+st.set_page_config(layout='wide', initial_sidebar_state='collapsed')
 
 with open('style.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-st.sidebar.header('CCTK `version 0.2`')
-
-st.sidebar.subheader('Conformance Checking Settings')
-#discover = st.sidebar.selectbox('Select discover option', ('no', 'yes'))
-
-tab = st.sidebar.selectbox("Select a tab", ["Demo with small Dataset", "Demo with big Dataset", "Free Upload"])
+st.sidebar.header('CCTK `version 0.3`')
 
 st.sidebar.markdown('''
 ---
@@ -74,99 +65,113 @@ with st.expander("What is the CCTK Prototype Roadmap?"):
 log = None
 pn = None
 
-tab1, tab2, tab3 = st.tabs(["Demo with small Dataset", "Demo with big Dataset", "Free Upload"])
+# 2. horizontal menu
+selected = option_menu(None, ["Demo 1", "Demo 2", "Dashboard", "Free Upload"],
+    icons=['list-task', 'list-task','list-task', "cloud-upload"],
+    menu_icon="cast", default_index=0, orientation="horizontal")
 
-with tab1:
-    if tab == "Demo with small Dataset":
-       st.header("Demo with small dataset")
+if selected == "Demo 1":
+   st.header("Demo 1 - Example with a (small) event log of 6 cases")
 
-       c1, c2 = st.columns((5, 5))
+   c1, c2 = st.columns((5, 5))
 
-       with c1:
-           st.markdown('### Event Log')
+   with c1:
+       st.markdown('### Event Log')
 
-           uploaded_log = "data/example/running_example_broken.csv"
-           sep = ";"
-           timestamp_format = "%Y-%m-%d %H:%M:%S"
+       uploaded_log = "data/example/running_example_broken.csv"
+       sep = ";"
+       timestamp_format = "%Y-%m-%d %H:%M:%S"
 
-           log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep, timestamp_format)
+       log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep, timestamp_format)
+
+       log_csv_show.to_csv("data/example/running_example_broken_show.csv", index=False)
+
+       st.write(log_csv_show)
+
+   with c2:
+       st.markdown('### Process Model')
+
+       uploaded_model = "running_example.pnml"
+
+       pn, im, fm, image1 = Util.get_model(uploaded_model)
+
+       Util.model_viz(image1, zoom=1.5)
+
+
+if selected == "Demo 2":
+   st.header("Demo 2 - Example with a (big) event log of 100 cases")
+
+   c1, c2 = st.columns((5, 5))
+
+   with c1:
+       st.markdown('### Event Log')
+
+       uploaded_log = "data/bpi12/BPI_Challenge_2012_reduced_A.csv"
+       sep = ","
+       timestamp_format = "%Y-%m-%d %H:%M:%S.%f"
+
+       log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep, timestamp_format)
+
+       st.write(log_csv_show)
+
+   with c2:
+       st.markdown('### Process Model')
+
+       uploaded_model = "bpi12_Model_A_fixed.pnml"
+
+       pn, im, fm, image1 = Util.get_model(uploaded_model)
+
+       Util.model_viz(image1, zoom=1.5)
+
+if selected == "Dashboard":
+
+    uploaded_log = "data/example/running_example_broken.csv"
+    sep = ";"
+    timestamp_format = "%Y-%m-%d %H:%M:%S"
+
+    log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep, timestamp_format)
+
+    uploaded_model = "running_example.pnml"
+
+    pn, im, fm, image1 = Util.get_model(uploaded_model)
+
+    Dash.run_dashboard(log_csv_show, image1)
+
+if selected == "Free Upload":
+   st.header("Free Upload - Try CCTK with your own event and model data!")
+
+   c1, c2 = st.columns((5, 5))
+
+   with c1:
+       st.markdown('### Event Log')
+
+       uploaded_log = st.file_uploader("Choose an event log")
+       sep = ","
+
+       if uploaded_log is not None:
+
+           log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep)
 
            st.write(log_csv_show)
 
-       with c2:
-           st.markdown('### Process Model')
+   with c2:
+       st.markdown('### Process Model')
 
-           uploaded_model = "running_example.pnml"
+       uploaded_model = st.file_uploader("Choose a process model")
 
-           pn, im, fm, image1 = Util.get_model(uploaded_model)
+       if uploaded_model is not None:
 
-           Util.model_viz(image1, zoom=1.5)
+            pn, im, fm, image1 = Util.get_model(uploaded_model)
 
-with tab2:
-    if tab == "Demo with big Dataset":
-       st.header("Demo with big dataset")
-
-       c1, c2 = st.columns((5, 5))
-
-       with c1:
-           st.markdown('### Event Log')
-
-           uploaded_log = "data/bpi12/BPI_Challenge_2012_reduced.csv"
-           sep = ","
-           timestamp_format = "%Y-%m-%d %H:%M:%S.%f"
-
-           log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep, timestamp_format)
-
-           st.write(log_csv_show)
-
-       with c2:
-           st.markdown('### Process Model')
-
-           uploaded_model = "bpi12_Model_AO_fixed.pnml"
-
-           pn, im, fm, image1 = Util.get_model(uploaded_model)
-
-           Util.model_viz(image1, zoom=1.5)
-with tab3:
-    if tab == "Free Upload":
-       st.header("Free upload")
-
-       c1, c2 = st.columns((5, 5))
-
-       with c1:
-           st.markdown('### Event Log')
-
-           uploaded_log = st.file_uploader("Choose an event log")
-           sep = ","
-
-           if uploaded_log is not None:
-
-               log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep)
-
-               st.write(log_csv_show)
-
-       with c2:
-           st.markdown('### Process Model')
-
-           uploaded_model = st.file_uploader("Choose a process model")
-
-           if uploaded_model is not None:
-
-                pn, im, fm, image1 = Util.get_model(uploaded_model)
-
-                Util.model_viz(image1, zoom=1.5)
+            Util.model_viz(image1, zoom=1.5)
 
 if log is not None and pn is not None:
 
    st.markdown('### Conformance Checking Results')
-
-   st.markdown('#### Alignment Log')
-   resulting_log_data = Util.find_deviations(log_csv, pn, im, fm)
-   st.write(resulting_log_data)
+   resulting_log_data = Util.find_deviations(log_csv, log, pn, im, fm)
 
    st.markdown('#### Quantify conformance')
-   fitness = Util.fitness_calc(log, pn, im, fm)
-   Util.fitness_viz(fitness)
+   Util.fitness_viz(resulting_log_data, log, pn, im, fm)
 
    st.markdown('#### Break-down and compare conformance')
 
@@ -198,3 +203,8 @@ if log is not None and pn is not None:
    pm4py.save_vis_alignments(log, aligned_traces, 'data/images/vis-alignments.svg')
    svg_string = Util.read_svg_file('data/images/vis-alignments.svg')
    Util.render_svg(svg_string, height="400px", open_in_new_tab=True)
+
+   st.markdown('#### Alignment Log')
+   st.write(resulting_log_data)
+
+
