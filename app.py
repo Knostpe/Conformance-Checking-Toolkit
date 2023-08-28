@@ -158,12 +158,15 @@ if log is not None and pn is not None:
    st.markdown('##### Variant-Model representation')
 
    aligned_traces = pm4py.conformance_diagnostics_alignments(log, pn, im, fm)
-   pm4py.save_vis_alignments(log, aligned_traces, 'data/images/vis-alignments.svg')
+   filtered_diagnostics = [{k: Util.filter_alignment(v) if k == 'alignment' else v for k, v in d.items()} for d in aligned_traces]
+   pm4py.save_vis_alignments(log, filtered_diagnostics, 'data/images/vis-alignments.svg')
    svg_string = Util.read_svg_file('data/images/vis-alignments.svg')
-   Util.render_svg(svg_string, height="400px", open_in_new_tab=True)
+   Util.render_svg(svg_string, height="1000px", open_in_new_tab=True)
 
    st.markdown('#### Alignment Log')
    st.write(resulting_log_data)
+
+
 
 
 
