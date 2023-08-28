@@ -66,76 +66,45 @@ log = None
 pn = None
 
 # 2. horizontal menu
-selected = option_menu(None, ["Demo 1", "Demo 2", "Dashboard", "Free Upload"],
+selected = option_menu(None, ["Demo 1", "Demo 2", "Free Upload"],
     icons=['list-task', 'list-task','list-task', "cloud-upload"],
     menu_icon="cast", default_index=0, orientation="horizontal")
 
 if selected == "Demo 1":
    st.header("Demo 1 - Example with a (small) event log of 6 cases")
 
-   c1, c2 = st.columns((5, 5))
+   uploaded_log = "data/example/running_example_broken.csv"
+   sep = ";"
+   timestamp_format = "%Y-%m-%d %H:%M:%S"
 
-   with c1:
-       st.markdown('### Event Log')
+   log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep, timestamp_format)
 
-       uploaded_log = "data/example/running_example_broken.csv"
-       sep = ";"
-       timestamp_format = "%Y-%m-%d %H:%M:%S"
+   uploaded_model = "running_example.pnml"
+   pn_viz = "small"
 
-       log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep, timestamp_format)
+   pn, im, fm = Util.get_model(uploaded_model)
 
-       log_csv_show.to_csv("data/example/running_example_broken_show.csv", index=False)
+   resulting_log_data = Util.find_deviations(log_csv, log, pn, im, fm)
 
-       st.write(log_csv_show)
-
-   with c2:
-       st.markdown('### Process Model')
-
-       uploaded_model = "running_example.pnml"
-
-       pn, im, fm, image1 = Util.get_model(uploaded_model)
-
-       Util.model_viz(image1, zoom=1.5)
-
+   Dash.run_dashboard(log, pn, im, fm, log_csv_show, pn_viz, resulting_log_data)
 
 if selected == "Demo 2":
-   st.header("Demo 2 - Example with a (big) event log of 100 cases")
+    st.header("Demo 2 - Example with a (big) event log of 100 cases")
 
-   c1, c2 = st.columns((5, 5))
-
-   with c1:
-       st.markdown('### Event Log')
-
-       uploaded_log = "data/bpi12/BPI_Challenge_2012_reduced_A.csv"
-       sep = ","
-       timestamp_format = "%Y-%m-%d %H:%M:%S.%f"
-
-       log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep, timestamp_format)
-
-       st.write(log_csv_show)
-
-   with c2:
-       st.markdown('### Process Model')
-
-       uploaded_model = "bpi12_Model_A_fixed.pnml"
-
-       pn, im, fm, image1 = Util.get_model(uploaded_model)
-
-       Util.model_viz(image1, zoom=1.5)
-
-if selected == "Dashboard":
-
-    uploaded_log = "data/example/running_example_broken.csv"
-    sep = ";"
-    timestamp_format = "%Y-%m-%d %H:%M:%S"
+    uploaded_log = "data/bpi12/BPI_Challenge_2012_reduced_A.csv"
+    sep = ","
+    timestamp_format = "%Y-%m-%d %H:%M:%S.%f"
 
     log, log_csv, log_csv_show = Util.get_log(uploaded_log, sep, timestamp_format)
 
-    uploaded_model = "running_example.pnml"
+    uploaded_model = "bpi12_Model_A_fixed.pnml"
+    pn_viz = "big"
 
-    pn, im, fm, image1 = Util.get_model(uploaded_model)
+    pn, im, fm = Util.get_model(uploaded_model)
 
-    Dash.run_dashboard(log_csv_show, image1)
+    resulting_log_data = Util.find_deviations(log_csv, log, pn, im, fm)
+
+    Dash.run_dashboard(log, pn, im, fm, log_csv_show, pn_viz, resulting_log_data)
 
 if selected == "Free Upload":
    st.header("Free Upload - Try CCTK with your own event and model data!")
@@ -163,25 +132,14 @@ if selected == "Free Upload":
 
             pn, im, fm, image1 = Util.get_model(uploaded_model)
 
-            Util.model_viz(image1, zoom=1.5)
+            st.graphviz_chart(image1)
+            #Util.model_viz(image1, zoom=1.5)
 
 if log is not None and pn is not None:
-
-   st.markdown('### Conformance Checking Results')
-   resulting_log_data = Util.find_deviations(log_csv, log, pn, im, fm)
-
-   st.markdown('#### Quantify conformance')
-   Util.fitness_viz(resulting_log_data, log, pn, im, fm)
 
    st.markdown('#### Break-down and compare conformance')
 
    Util.plot_compare_calc(Util.fitness_compare_calc(log, pn, im, fm))
-
-   st.markdown('#### Localize and show deviations')
-
-   st.markdown('##### Log-Model representation')
-
-   Util.alignment_viz(log, pn, im, fm)
 
    st.markdown('##### Case-Model representation')
 
@@ -206,5 +164,7 @@ if log is not None and pn is not None:
 
    st.markdown('#### Alignment Log')
    st.write(resulting_log_data)
+
+
 
 

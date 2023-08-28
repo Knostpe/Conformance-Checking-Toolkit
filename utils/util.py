@@ -40,13 +40,21 @@ def get_model(uploaded_model):
         model_filename = uploaded_model.name  # If 'file_uploader' mode, get the filename.
 
     pn, im, fm = pm4py.read_pnml('data/models/' + model_filename)
-    try:
-        image1 = Image.open('data/images/' + model_filename[:-4] + 'png')
-    except FileNotFoundError:
-        pm4py.save_vis_petri_net(pn, im, fm, 'data/images/' + model_filename[:-4] + 'png')
-        image1 = Image.open('data/images/' + model_filename[:-4] + 'png')
 
-    return  pn, im, fm, image1
+
+
+    return  pn, im, fm
+
+def model_viz(pn, im, fm):
+    pn_viz = pm4py.visualization.petri_net.common.visualize.apply(pn, im, fm)
+
+    pn_viz.attr(rankdir='TB')  # Set the layout direction (Left to Right)
+    pn_viz.attr(size=f"4,3!")
+    pn_viz.attr(ratio="fill")  # This might help maintain aspect ratio
+    st.graphviz_chart(pn_decorated_align)
+
+    # pn_viz.attr(dpi="1500")
+    # pn_viz.render('data/images/petri_net', format="png", cleanup=True)
 
 def csv_prep(log_csv):
     log_csv = renumerate_case_ids(log_csv)
@@ -72,10 +80,6 @@ def renumerate_case_ids(data_frame, case_id_column='case:concept:name'):
 
     return data_frame
 
-def model_viz(image, zoom=None):
-    """Displays the given image with optional size and zoom customization."""
-    st.image(image)
-
 def fitness_calc(log, pn, im, fm):
     fitness = pm4py.fitness_token_based_replay(log, pn, im, fm)
     return fitness
@@ -96,7 +100,15 @@ def fitness_compare_calc(log, pn, im, fm):
 
 def alignment_viz(log, pn, im, fm):
     pn_decorated_align = vis.apply(pn, im, fm, log, variant=vis.ALIGNMENTS)
+
+    # Adjust layout engine and graph attributes
+    pn_decorated_align.attr(rankdir='TB')  # Set the layout direction (Left to Right)
+    pn_decorated_align.attr(size=f"4,3!")
+    pn_decorated_align.attr(ratio="fill")  # This might help maintain aspect ratio
     st.graphviz_chart(pn_decorated_align)
+
+    #pn_decorated_align.attr(dpi="1000")
+    #pn_decorated_align.render('data/images/alignment_viz', format="png", cleanup=True)
 
 def frequency_viz(log, pn, im, fm):
     pn_decorated_freq = tdf.apply(pn, im, fm, log)

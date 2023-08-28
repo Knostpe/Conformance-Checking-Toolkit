@@ -6,12 +6,25 @@ from .dashboard import Dashboard
 
 class Pie(Dashboard.Item):
 
+    def generate_data(values):
+        categories = ["Conformant Events", "Deviating Events", "Missing Events"]
+        colors = ["hsl(128, 70%, 50%)", "hsl(178, 70%, 50%)", "hsl(322, 70%, 50%)"]
+
+        data = []
+        for i, category in enumerate(categories):
+            data.append({
+                "id": category,
+                "label": category.split()[0],
+                "value": values[i],
+                "color": colors[i]
+            })
+
+        return json.dumps(data, indent=2)
+
     DEFAULT_DATA = [
-        { "id": "java", "label": "java", "value": 465, "color": "hsl(128, 70%, 50%)" },
-        { "id": "rust", "label": "rust", "value": 140, "color": "hsl(178, 70%, 50%)" },
-        { "id": "scala", "label": "scala", "value": 40, "color": "hsl(322, 70%, 50%)" },
-        { "id": "ruby", "label": "ruby", "value": 439, "color": "hsl(117, 70%, 50%)" },
-        { "id": "elixir", "label": "elixir", "value": 366, "color": "hsl(286, 70%, 50%)" }
+        {"id": "Conformant Events", "label": "Conformant", "value": 10, "color": "hsl(128, 70%, 50%)"},
+        {"id": "Deviating Events", "label": "Deviating", "value": 10, "color": "hsl(178, 70%, 50%)"},
+        { "id": "Missing Events", "label": "Missing", "value": 10, "color": "hsl(322, 70%, 50%)"}
     ]
 
     def __init__(self, *args, **kwargs):
@@ -53,7 +66,7 @@ class Pie(Dashboard.Item):
             with mui.Box(sx={"flex": 1, "minHeight": 0}):
                 nivo.Pie(
                     data=data,
-                    theme=self._theme["dark" if self._dark_mode else "light"],
+                    theme=self._theme["light"],
                     margin={ "top": 40, "right": 80, "bottom": 80, "left": 80 },
                     innerRadius=0.5,
                     padAngle=0.7,
