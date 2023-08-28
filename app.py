@@ -3,6 +3,8 @@ from streamlit_option_menu import option_menu
 import pm4py
 import utils.util as Util
 import components.run_dashboard as Dash
+import cairosvg
+
 
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed')
 
@@ -160,8 +162,7 @@ if log is not None and pn is not None:
    aligned_traces = pm4py.conformance_diagnostics_alignments(log, pn, im, fm)
    filtered_diagnostics = [{k: Util.filter_alignment(v) if k == 'alignment' else v for k, v in d.items()} for d in aligned_traces]
    pm4py.save_vis_alignments(log, filtered_diagnostics, 'data/images/vis-alignments.svg')
-   svg_string = Util.read_svg_file('data/images/vis-alignments.svg')
-   Util.render_svg(svg_string, height="1000px", open_in_new_tab=True)
+   cairosvg.svg2png(url="data/images/vis-alignments.svg", write_to='data/images/vis-alignments.png', output_width=6000)
 
    st.markdown('#### Alignment Log')
    st.write(resulting_log_data)
