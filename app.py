@@ -3,7 +3,6 @@ from streamlit_option_menu import option_menu
 import pm4py
 import utils.util as Util
 import components.run_dashboard as Dash
-import cairosvg
 
 
 st.set_page_config(layout='wide', initial_sidebar_state='collapsed')
@@ -11,7 +10,7 @@ st.set_page_config(layout='wide', initial_sidebar_state='collapsed')
 with open('style.css') as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
-st.sidebar.header('CCTK `version 0.3`')
+st.sidebar.header('CCTK `version 0.5`')
 
 st.sidebar.markdown('''
 ---
