@@ -20,18 +20,17 @@ Created by [Knostpe](https://github.com/Knostpe).
 
 #st.image(Image.open('data/images/Process-Mining-banner.jpg'), width=400)
 
-st.header("Welcome to the Conformance Checking Toolkit (CCTK) Prototype")
+st.header("Welcome to the Conformance Checking Toolkit Prototype")
 
 st.write("""
 Dear Participants,
 
-We greatly appreciate your willingness to participate in this research, which aims to evaluate the effectiveness of our prototype in supporting the representation of conformance checking results through visual analytics.
+We appreciate your willingness to participate in this research, which aims to assess the effectiveness of our prototype in supporting the visual representation of conformance checking results.
 
-This toolkit has been developed with the purpose of helping users like you gain valuable insights from conformance checking data and make informed decisions to improve process efficiency and compliance. Your valuable feedback and experiences will play a pivotal role in refining and enhancing the toolkit's usability and functionality.
+The prototype was created to aid users in extracting insights from conformance checking data. 
+When using visual analytics in the context of conformance checking, your feedback will be critical in understanding user expectations.
 
-We kindly ask you to complete the survey and engage with the case study tasks provided in the prototype.Your inputs will contribute significantly to our research and will shape the toolkit's future development, ensuring it meets the needs of users in real-world scenarios.
-
-Thank you for your time and commitment.Let's embark on this user study journey together to unlock the full potential of CCTK.
+Please complete the survey, which should still be open in another tab, and participate in the tasks provided. Thank you for your time and effort.
 """)
 
 with st.expander("What is Conformance Checking?"):
@@ -49,19 +48,6 @@ with st.expander("What is Conformance Checking?"):
     enhance process performance, identify bottlenecks, and ensure adherence to process standards.
     """)
 
-with st.expander("What should be achieved through the CCTK Prototype?"):
-    st.write("""
-    This tool aims to empower you to gain valuable insights from conformance checking data and make data-driven decisions for process improvement and compliance. 
-    Through this prototype, we strive to provide effective visual representations, result abstractions, decision-support features, and a user-centric experience 
-    to enhance your understanding and analysis of conformance checking results.
-
-    Thank you for your participation and valuable feedback.
-    """)
-
-with st.expander("What is the CCTK Prototype Roadmap?"):
-    svg_string = Util.read_svg_file('data/images/CCTK Prototype Roadmap.svg')
-    Util.render_svg(svg_string)
-
 # Import and prepare data
 
 log = None
@@ -73,7 +59,7 @@ selected = option_menu(None, ["Demo 1", "Demo 2", "Free Upload"],
     menu_icon="cast", default_index=0, orientation="horizontal")
 
 if selected == "Demo 1":
-   st.header("Demo 1 - Example with a (small) event log of 6 cases")
+   st.header("Illustration of the Prototype with an Example Event Log of 6 Cases")
 
    uploaded_log = "data/example/running_example_broken.csv"
    sep = ";"
@@ -91,7 +77,7 @@ if selected == "Demo 1":
    Dash.run_dashboard(log, pn, im, fm, log_csv_show, pn_viz, resulting_log_data)
 
 if selected == "Demo 2":
-    st.header("Demo 2 - Example with a (big) event log of 100 cases")
+    st.header("Illustration of the Prototype with an Example Event Log of 100 Cases")
 
     uploaded_log = "data/bpi12/BPI_Challenge_2012_reduced_A.csv"
     sep = ","
@@ -139,33 +125,24 @@ if selected == "Free Upload":
 
 if log is not None and pn is not None:
 
-   st.markdown('#### Break-down and compare conformance')
+    #Util.plot_compare_calc(Util.fitness_compare_calc(log, pn, im, fm))
 
-   Util.plot_compare_calc(Util.fitness_compare_calc(log, pn, im, fm))
+    st.markdown('#### Scatter plot')
+    c1, c2, c3 = st.columns((3, 3, 3))
 
-   st.markdown('##### Case-Model representation')
+    with c1:
+        distribution = st.radio("Choose the distribution:", ["Event ID", "Time"], horizontal=True)
+    with c2:
+        type = st.radio("Choose the highlighting options:", ["Deviation Type", "Event Type"], horizontal=True)
+    with c3:
+        aggregation = st.radio("Choose the aggregation:", ["Variants", "Cases"], horizontal=True)
 
-   type = st.radio("Event highlighting options:",
-                   ["Highlight Missing and Deviating Events", "Highlight by Event Types"], horizontal=True)
-   distribution = st.radio("Choose the distribution:", ["Event Number", "Time"], horizontal=True)
-   if distribution == "Event Number" and type == "Highlight Missing and Deviating Events":
-       Util.plot_distribution(resulting_log_data, show_deviations=True)
-   elif distribution == "Event Number" and type == "Highlight by Event Types":
-       Util.plot_distribution(resulting_log_data, color_by_event_type=True)
-   elif distribution == "Time" and type == "Highlight Missing and Deviating Events":
-       Util.plot_distribution(resulting_log_data, x_axis='time', show_deviations=True)
-   elif distribution == "Time" and type == "Highlight by Event Types":
-       Util.plot_distribution(resulting_log_data, x_axis='time', color_by_event_type=True)
+    Util.plot_distribution(resulting_log_data, distribution, type, aggregation, selected)
 
-   st.markdown('##### Variant-Model representation')
 
-   aligned_traces = pm4py.conformance_diagnostics_alignments(log, pn, im, fm)
-   filtered_diagnostics = [{k: Util.filter_alignment(v) if k == 'alignment' else v for k, v in d.items()} for d in aligned_traces]
-   pm4py.save_vis_alignments(log, filtered_diagnostics, 'data/images/vis-alignments.svg')
-   cairosvg.svg2png(url="data/images/vis-alignments.svg", write_to='data/images/vis-alignments.png', output_width=6000)
 
-   st.markdown('#### Alignment Log')
-   st.write(resulting_log_data)
+
+
 
 
 

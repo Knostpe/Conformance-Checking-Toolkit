@@ -237,21 +237,29 @@ def plot_compare_calc(df):
     # Display the Plotly figure using Streamlit
     st.plotly_chart(fig)
 
-def plot_distribution(log_csv, x_axis='events', color_by_event_type=False, show_deviations=False):
+def plot_distribution(log_csv, distribution, type, aggregation, selected):
 
-    if x_axis == 'time':
+    if distribution == "Time" and aggregation == "Variants":
+        st.warning("Oops! It looks like you've selected an invalid combination. "
+                   "Variants can't be shown on a temporal scale. "
+                   "Please choose a different combination.")
+        return
+
+    if distribution == 'Time':
         x_axis_label = 'Timestamp'
         x_tickformat = '%Y-%m-%d'  # Display year-month-day format
-    elif x_axis == 'events':
+    elif distribution == 'Event ID':
         # Count the number of events per case and create a new DataFrame
         log_csv['event_count'] = log_csv.groupby('case:concept:name').cumcount() + 1
-
-        x_axis_label = 'Number of Events'
+        x_axis_label = 'Event ID'
         x_tickformat = None
+
+    if aggregation == "Variants":
+        log_csv = create_variant_log_dict(log_csv)
 
     # Create a color map for event types (only if color_by_event_type is True)
     color_map = None
-    if color_by_event_type:
+    if type == "Event Type":
         event_types = log_csv['concept:name'].unique()
         color_palette = ['blue', 'green', 'red', 'orange', 'purple', 'pink', 'brown', 'gray', 'olive', 'cyan']
         color_map = dict(zip(event_types, color_palette))
@@ -259,90 +267,236 @@ def plot_distribution(log_csv, x_axis='events', color_by_event_type=False, show_
     # Create separate traces for deviations and conformant events (only if show_deviations is True)
     scatter_traces = []
 
-    if show_deviations:
+    if type == "Deviation Type":
 
         conformant_events = log_csv[(~log_csv['missing']) & (~log_csv['is_deviation'])]
         deviation_events = log_csv[log_csv['is_deviation']]
 
+        if aggregation == "Cases":
+            hovertemplate = '<b>Date:</b> %{customdata|%Y-%m-%d}<br>' + '<b>Time:</b> %{customdata|%H:%M:%S}<br>' + '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Conformant'
+        else:
+            hovertemplate = '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Conformant'
+
         conformant_trace = go.Scatter(
-            x=(conformant_events['time:timestamp'] if x_axis == "time" else conformant_events['event_count']),
+            x=(conformant_events['time:timestamp'] if distribution == "Time" else conformant_events['event_count']),
             y=conformant_events['case:concept:name'].astype(str),
             mode='markers',
             marker=dict(color='blue', size=10, symbol='circle'),
             name='Conformant Events',
             text=conformant_events['concept:name'],  # Hover text for conformant event points
             customdata=conformant_events['time:timestamp'],
-            hovertemplate='<b>Date:</b> %{customdata|%Y-%m-%d}<br>' + '<b>Time:</b> %{customdata|%H:%M:%S}<br>' + '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Conformant',
+            hovertemplate=hovertemplate,
             legendgroup='Conformant Events',
         )
         scatter_traces.append(conformant_trace)
 
+        if aggregation == "Cases":
+            hovertemplate = '<b>Date:</b> %{customdata|%Y-%m-%d}<br>' + '<b>Time:</b> %{customdata|%H:%M:%S}<br>' + '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Deviating'
+        else:
+            hovertemplate = '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Deviating'
+
         deviation_trace = go.Scatter(
-            x=(deviation_events['time:timestamp'] if x_axis == "time" else deviation_events['event_count']),
-            y=deviation_events['case:concept:name'].astype(str),
+            x=(deviation_events['time:timestamp'] if distribution == "Time" else deviation_events['event_count']),
+            y= deviation_events['case:concept:name'].astype(str),
             mode='markers',
             marker=dict(color='red', size=10, symbol='x'),
             name='Deviating Events',
             text=deviation_events['concept:name'],  # Hover text for deviation points
             customdata=deviation_events['time:timestamp'],
-            hovertemplate='<b>Date:</b> %{customdata|%Y-%m-%d}<br>' + '<b>Time:</b> %{customdata|%H:%M:%S}<br>' + '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Deviating',
+            hovertemplate=hovertemplate,
             legendgroup='Deviating Events',
         )
         scatter_traces.append(deviation_trace)
 
-        if x_axis == 'events':
+        if aggregation == "Cases":
+            hovertemplate = '<b>Date:</b> None<br>' + '<b>Time:</b> None<br>' + '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Missing'
+        else:
+            hovertemplate = '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Missing'
+
+        if distribution == 'Event ID':
             missing_events = log_csv[log_csv['missing']]
             missing_trace = go.Scatter(
-                x=(missing_events['time:timestamp'] if x_axis == "time" else missing_events['event_count']),
-                y=missing_events['case:concept:name'].astype(str),
+                x=(missing_events['time:timestamp'] if distribution == "Time" else missing_events['event_count']),
+                y= missing_events['case:concept:name'].astype(str),
                 mode='markers',
                 marker=dict(color='gray', size=10, symbol='square'),
                 name='Missing Events',
                 text=missing_events['concept:name'],  # Hover text for deviation points
-                hovertemplate='<b>Date:</b> None<br>' + '<b>Time:</b> None<br>' + '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Missing',
+                hovertemplate=hovertemplate,
                 legendgroup='Missing Events',
             )
             scatter_traces.append(missing_trace)
 
     # Create separate traces for each event type (only if color_by_event_type is True)
-    if color_by_event_type:
+    if type =="Event Type":
+        if aggregation == "Cases":
+            hovertemplate = '<b>Date:</b> %{customdata[0]|%Y-%m-%d} <br>' + '<b>Time:</b> %{customdata[0]|%H:%M:%S}<br>' + '<b>Event Type:</b> %{text}<br>' + '<b>Conformant:</b> %{customdata[1]}'
+        else:
+            hovertemplate = '<b>Event Type:</b> %{text}<br>' + '<b>Conformant:</b> %{customdata[1]}'
+
         for event_type in event_types:
             color = color_map[event_type]
             log_event_type = log_csv[log_csv['concept:name'] == event_type]
             trace = go.Scatter(
-                x=(log_event_type['time:timestamp'] if x_axis == "time" else log_event_type['event_count']),
+                x=(log_event_type['time:timestamp'] if distribution == "Time" else log_event_type['event_count']),
                 y=log_csv[log_csv['concept:name'] == event_type]['case:concept:name'].astype(str),
                 mode='markers',
                 marker=dict(color=color, size=10),
                 name=event_type,
                 text=log_csv[log_csv['concept:name'] == event_type]['concept:name'],  # Hover text for data points (event_type values)
-                hovertemplate= '<b>Date:</b> %{customdata[0]|%Y-%m-%d} <br>' + '<b>Time:</b> %{customdata[0]|%H:%M:%S}<br>' + '<b>Event Type:</b> %{text}<br>' + '<b>Conformant:</b> %{customdata[1]}',
+                hovertemplate= hovertemplate,
                 customdata=np.stack((log_event_type['time:timestamp'], ['No' if is_deviation else 'Yes' for is_deviation in log_event_type['is_deviation']]), axis=-1),
                 legendgroup=event_type,
             )
             scatter_traces.append(trace)
 
     # Create the layout
-    layout = go.Layout(
-        title=f'{"Temporal" if x_axis == "time" else "Event"} Case Model Abstraction',
-        xaxis=dict(title=x_axis_label, tickformat=x_tickformat),
-        yaxis=dict(title='Case ID'),
-        hovermode='closest',
-        plot_bgcolor='white',
-        )
+    layout, height = create_custom_layout(log_csv, distribution, x_axis_label, x_tickformat, aggregation, selected)
 
     # Create the figure and add the traces
     fig = go.Figure(data=scatter_traces, layout=layout)
 
-    # Update axis style
-    fig.update_xaxes(showgrid=True, gridcolor='lightgray')
-    fig.update_yaxes(showgrid=True, gridcolor='lightgray')
-
-    # Update title style
-    fig.update_layout(title_font=dict(size=16, family='Arial', color='black'))
-
     # Display the Plotly figure using Streamlit
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True, height=height)
+
+def create_variant_log_dict(log_csv):
+
+    case_dict = {}
+
+    # Iterate through the DataFrame and populate the dictionary
+    for category, values in log_csv.groupby('case:concept:name'):
+        case_dict[category] = values.to_dict('records')
+
+    flattened_data = {}
+
+    for case, events in case_dict.items():
+        flattened_events = [
+            (
+                event["concept:name"],
+                "missing" if event["missing"] else "deviating" if event["is_deviation"] else "conformant",
+            )
+            for event in events
+        ]
+        flattened_data[case] = flattened_events
+
+    unique_traces = {}
+    selected_trace_ids = []
+
+    for trace_id, events in flattened_data.items():
+        trace_content = tuple(events)  # Convert the events to a hashable tuple
+        if trace_content not in unique_traces:
+            selected_trace_ids.append(trace_id)
+            unique_traces[trace_content] = 1
+        else:
+            unique_traces[trace_content] += 1
+
+    selected_traces = {
+        trace_id: {
+            "events": flattened_data[trace_id],
+            "count": unique_traces[tuple(flattened_data[trace_id])]
+        }
+        for trace_id in selected_trace_ids
+    }
+
+    # Get the relevant trace IDs from selected_traces
+    relevant_trace_ids = selected_traces.keys()
+
+    # Filter log_csv to include only relevant traces
+    filtered_log = log_csv[log_csv['case:concept:name'].isin(relevant_trace_ids)].copy()
+
+    # Sort filtered_log based on unique event counts
+    filtered_log['variant_count'] = filtered_log['case:concept:name'].map(
+        {trace_id: trace_info['count'] for trace_id, trace_info in selected_traces.items()}
+    )
+    filtered_log.sort_values(by='variant_count', ascending=False, inplace=True)
+
+    # Create a dictionary to map existing values to new IDs
+    unique_values = filtered_log['case:concept:name'].unique()
+    value_to_id = {value: i + 1 for i, value in enumerate(unique_values)}
+
+    # Map the values in the 'case:concept:name' column to new IDs
+    filtered_log['case:concept:name'] = filtered_log['case:concept:name'].map(value_to_id)
+
+    return filtered_log
+
+def create_custom_layout(log_csv, distribution, x_axis_label, x_tickformat, aggregation, selected):
+
+    y_vals = list(range(1, len(log_csv['case:concept:name'].unique()) + 1))
+
+    if selected == "Demo 1":
+        height = 400
+    elif selected == "Demo 2" and aggregation == "Cases":
+        height = 3000
+    else:
+        height = 600
+
+    if aggregation == "Cases":
+        layout = go.Layout(
+            title=f'{"Temporal" if distribution == "Time" else "Event sequence"} abstraction of aligned traces - Case-level',
+            titlefont=dict(size=24),  # Set the font size of the general title (adjust as needed)
+            xaxis=dict(
+                title=x_axis_label,
+                titlefont=dict(size=20),  # Set the font size of the x-axis title (adjust as needed)
+                tickformat=x_tickformat,
+                tickfont=dict(size=18),  # Set the font size of the x-axis tick labels (adjust as needed)
+                showgrid=True,  # Show gridlines
+                gridcolor='lightgray',  # Gridline color
+            ),
+            yaxis=dict(
+                title='Case ID',
+                titlefont=dict(size=20),  # Set the font size of the y-axis title (adjust as needed)
+                tickvals=y_vals,
+                ticktext=log_csv['case:concept:name'].unique(),
+                showgrid=True,  # Show gridlines
+                gridcolor='lightgray',  # Gridline color
+                zeroline=False,  # Disable zero line
+                ticksuffix='',  # Disable the default tick suffix (like 'e' in 1e6)
+                range=[min(y_vals), max(y_vals)],  # Set the y-axis range based on your data
+                tickfont=dict(size=18),  # Set the font size of the y-axis tick labels (adjust as needed)
+            ),
+            yaxis_autorange='reversed',
+            hovermode='closest',
+            plot_bgcolor='white',
+            height=height,
+        )
+    else:
+
+        variant_occurrences = log_csv[log_csv['event_count'] == 1]['variant_count']
+
+        ticktext_list = [
+            f"Variant {variant_num} ({occurrences} occurrences)"
+            for variant_num, occurrences in zip(y_vals, variant_occurrences)
+        ]
+
+        layout = go.Layout(
+            title=f'{"Temporal" if distribution == "Time" else "Event sequence"} abstraction of aligned traces - Variant-level',
+            titlefont=dict(size=22),  # Set the font size of the general title (adjust as needed)
+            xaxis=dict(
+                title=x_axis_label,
+                titlefont=dict(size=20),  # Set the font size of the x-axis title (adjust as needed)
+                showgrid=True,  # Show gridlines
+                gridcolor='lightgray',  # Gridline color
+                tickformat=x_tickformat,
+                tickfont=dict(size=18),  # Set the font size of the x-axis tick labels (adjust as needed)
+            ),
+            yaxis=dict(
+                title='Variants',
+                titlefont=dict(size=20),  # Set the font size of the y-axis title (adjust as needed)
+                tickvals=y_vals,
+                ticktext=ticktext_list,
+                showgrid=True,  # Show gridlines
+                gridcolor='lightgray',  # Gridline color
+                zeroline=False,  # Disable zero line
+                ticksuffix='',  # Disable the default tick suffix (like 'e' in 1e6)
+                range=[min(y_vals), max(y_vals)],  # Set the y-axis range based on your data
+                tickfont=dict(size=18),  # Set the font size of the y-axis tick labels (adjust as needed)
+            ),
+            yaxis_autorange='reversed',
+            hovermode='closest',
+            plot_bgcolor='white',
+            height=height,
+        )
+    return layout, height
 
 def find_deviations(log_csv, log, pn, im, fm):
     diagnostics = pm4py.conformance_diagnostics_alignments(log, pn, im, fm, activity_key='concept:name', case_id_key='case:concept:name', timestamp_key='time:timestamp')
@@ -439,4 +593,12 @@ def deviation_check(log_csv, deviations_by_case):
         result_df.loc[condition, 'is_deviation'] = True
 
     return result_df
+
+def save_variant_table(log, pn, im, fm):
+
+    aligned_traces = pm4py.conformance_diagnostics_alignments(log, pn, im, fm)
+    filtered_diagnostics = [{k: filter_alignment(v) if k == 'alignment' else v for k, v in d.items()} for d in aligned_traces]
+    pm4py.save_vis_alignments(log, filtered_diagnostics, 'data/images/vis-alignments.svg')
+    cairosvg.svg2png(url="data/images/vis-alignments.svg", write_to='data/images/vis-alignments.png', output_width=6000)
+
 

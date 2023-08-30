@@ -18,6 +18,7 @@ class Model(Dashboard.Item):
         with mui.Paper(key=self._key,
                        sx={"display": "flex", "flexDirection": "column", "borderRadius": 3, "overflow": "hidden"},
                        elevation=1):
+
             with self.title_bar(padding="10px 15px 10px 15px", dark_switcher=False):
                 mui.icon.AccountTree()
                 mui.Typography(lst[0])
@@ -30,3 +31,13 @@ class Model(Dashboard.Item):
                     image=image_path,  # Pass the image bytes
                     alt="Image Alt Text",
                 )
+
+            #with mui.CardContent(sx={"flex": 1}):
+                #mui.Typography("XYZ")
+
+
+
+
+
+
+

@@ -5,7 +5,6 @@ from .dashboard import Dashboard
 class Metric(Dashboard.Item):
 
     def __call__(self, text):
-
         lst = str(text).split(";")
 
         with mui.Paper(key=self._key,
@@ -17,4 +16,4 @@ class Metric(Dashboard.Item):
 
             # Center the image and add padding for CardMedia
             with mui.Box(sx={"display": "flex", "justifyContent": "center", "padding": "20px"}):
-                mui.Typography(lst[1], variant="h3")
+                mui.Typography(lst[1], variant="h4")

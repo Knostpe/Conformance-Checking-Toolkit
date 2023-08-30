@@ -4,13 +4,15 @@ from streamlit_elements import mui
 from .dashboard import Dashboard
 
 
-class DataGrid(Dashboard.Item):
+class DataGridAlign(Dashboard.Item):
 
     DEFAULT_COLUMNS = [
-        {"field": 'CaseID', "headerName": 'Case ID', "type": 'number', "width": 80},
+        {"field": 'CaseID', "headerName": 'Case ID', "type": 'number', "width": 65},
         {"field": 'Event Type', "headerName": 'Event Type', "width": 150, "editable": True},
-        {"field": 'Timestamp', "headerName": 'Timestamp', "width": 220, "editable": True},
-        {"field": 'EventID', "headerName": 'Event ID', "type": 'number', "width": 80, "editable": True},
+        {"field": 'Timestamp', "headerName": 'Timestamp', "width": 170, "editable": True},
+        {"field": 'EventID', "headerName": 'Event ID', "type": 'number', "width": 70, "editable": True},
+        {"field": 'Deviating', "headerName": 'Deviating', "type": 'boolean', "width": 75, "editable": True},
+        {"field": 'Missing', "headerName": 'Missing', "type": 'boolean', "width": 65, "editable": True},
     ]
 
     def _handle_edit(self, params):
@@ -27,7 +29,7 @@ class DataGrid(Dashboard.Item):
                        elevation=1):
             with self.title_bar(padding="10px 15px 10px 15px", dark_switcher=False):
                 mui.icon.ViewCompact()
-                mui.Typography("Event Log")
+                mui.Typography("Alignment Log")
 
             with mui.Box(sx={"flex": 1, "minHeight": 0}):
                 mui.DataGrid(
@@ -39,6 +41,3 @@ class DataGrid(Dashboard.Item):
                     disableSelectionOnClick=True,
                     onCellEditCommit=self._handle_edit,
                 )
-
-
-
