@@ -1,4 +1,4 @@
-from streamlit_elements import mui
+from streamlit_elements import mui, elements, html
 from .dashboard import Dashboard
 
 
@@ -16,4 +16,5 @@ class Metric(Dashboard.Item):
 
             # Center the image and add padding for CardMedia
             with mui.Box(sx={"display": "flex", "justifyContent": "center", "padding": "20px"}):
-                mui.Typography(lst[1], variant="h4")
+                with elements("style_elements_css"):
+                    mui.Typography(lst[1], variant="h4")

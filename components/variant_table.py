@@ -1,13 +1,14 @@
 from streamlit_elements import mui
 from .dashboard import Dashboard
 
-class Model(Dashboard.Item):
+class VariantTable(Dashboard.Item):
 
     def __call__(self, text):
 
         lst = str(text).split(";")
 
-        image_path = "https://raw.githubusercontent.com/Knostpe/thesis-test/master/data/images/" + lst[1]
+        image_path1 = "https://raw.githubusercontent.com/Knostpe/thesis-test/master/data/images/" + lst[1] +".png"
+        image_path2 = "https://raw.githubusercontent.com/Knostpe/thesis-test/master/data/images/vis-alignments-legend.png"
 
         with mui.Paper(key=self._key,
                        sx={"display": "flex", "flexDirection": "column", "borderRadius": 3, "overflow": "hidden"},
@@ -22,16 +23,13 @@ class Model(Dashboard.Item):
                 mui.CardMedia(
                     component="img",
                     sx={"maxWidth": "100%", "maxHeight": "100%", "width": "auto", "height": "auto"},
-                    image=image_path,  # Pass the image bytes
+                    image=image_path1,  # Pass the image bytes
                     alt="Image Alt Text",
                 )
 
-            #with mui.CardContent(sx={"flex": 1}):
-                #mui.Typography("XYZ")
-
-
-
-
-
-
-
+                mui.CardMedia(
+                    component="img",
+                    sx={"maxWidth": "100%", "maxHeight": "100%", "width": "auto", "height": "auto"},
+                    image=image_path2,  # Pass the image bytes
+                    alt="Image Alt Text",
+                )

@@ -6,7 +6,7 @@ from pathlib import Path
 from streamlit import session_state as state
 from streamlit_elements import elements, sync, event
 from types import SimpleNamespace
-from . import Dashboard, DataGrid, DataGridAlign, Model, Metric, Pie
+from . import Dashboard, DataGrid, DataGridAlign, Model, Metric, Pie, VariantTable
 from utils import util as Util
 
 def run_dashboard(log, pn, im, fm, log_csv_show, pn_viz, resulting_log_data):
@@ -30,7 +30,7 @@ def run_dashboard(log, pn, im, fm, log_csv_show, pn_viz, resulting_log_data):
         pie=Pie(board, 6, 9, 6, 6, minW=3, minH=4),
         alignment_model=Model(board, 0, 15, 6, 9, minW=3, minH=3),
         alignment_log=DataGridAlign(board, 6, 15, 6, 9, minW=3, minH=3),
-        variant_table=Model(board, 0, 24, 12, height, minW=3, minH=3),
+        variant_table=VariantTable(board, 0, 24, 12, height, minW=3, minH=3),
     )
     state.w = w
 
@@ -64,7 +64,7 @@ def run_dashboard(log, pn, im, fm, log_csv_show, pn_viz, resulting_log_data):
     w.dashboard.add_tab("Pie", Pie.generate_data(metrics456), "json")
     w.dashboard.add_tab("Alignment Model", "Alignment Model;alignment_viz_"+pn_viz+".png", "plaintext")
     w.dashboard.add_tab("Alignment Log", json.dumps(alignment_log.to_dict(orient='records'), indent=2), "json")
-    w.dashboard.add_tab("Variant Table", "Variant Table;vis-alignments_"+pn_viz+".png", "plaintext")
+    w.dashboard.add_tab("Variant Table", "Variant Table;vis-alignments_"+pn_viz, "plaintext")
 
     with elements("demo"):
         event.Hotkey("ctrl+s", sync(), bindInputs=True, overrideDefault=True)

@@ -4,3 +4,4 @@ from .datagrid_align import DataGridAlign
 from .model import Model
 from .metric import Metric
 from .pie import Pie
+from .variant_table import VariantTable
