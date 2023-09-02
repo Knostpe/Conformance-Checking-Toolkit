@@ -105,7 +105,6 @@ if selected == "Free Upload":
 if log is not None and pn is not None:
 
     #Util.plot_compare_calc(Util.fitness_compare_calc(log, pn, im, fm))
-
     st.markdown('#### Scatter plot')
     c1, c2, c3 = st.columns((3, 3, 3))
 
