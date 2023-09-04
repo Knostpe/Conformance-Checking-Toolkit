@@ -28,7 +28,7 @@ class DataGridAlign(Dashboard.Item):
                        sx={"display": "flex", "flexDirection": "column", "borderRadius": 3, "overflow": "hidden"},
                        elevation=1):
             with self.title_bar(padding="10px 15px 10px 15px", dark_switcher=False):
-                mui.icon.DataSet()
+                mui.icon.TableChart()
                 mui.Typography("Alignment Log")
 
             with mui.Box(sx={"flex": 1, "minHeight": 0}):

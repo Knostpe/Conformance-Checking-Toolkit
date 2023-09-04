@@ -277,11 +277,13 @@ def plot_distribution(log_csv, distribution, type, aggregation, selected):
         else:
             hovertemplate = '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Conformant'
 
+        color = 'rgb(134, 228, 134)'  # Adjust the RGB values as needed
+
         conformant_trace = go.Scatter(
             x=(conformant_events['time:timestamp'] if distribution == "Time" else conformant_events['event_count']),
             y=conformant_events['case:concept:name'].astype(str),
             mode='markers',
-            marker=dict(color='blue', size=10, symbol='circle'),
+            marker=dict(color=color, size=10, symbol='circle'),
             name='Conformant Events',
             text=conformant_events['concept:name'],  # Hover text for conformant event points
             customdata=conformant_events['time:timestamp'],
@@ -295,11 +297,13 @@ def plot_distribution(log_csv, distribution, type, aggregation, selected):
         else:
             hovertemplate = '<b>Event:</b> %{text}<br>' + '<b>Result:</b> Deviating'
 
+        color = 'rgb(220, 120, 0)'  # Adjust the RGB values as needed
+
         deviation_trace = go.Scatter(
             x=(deviation_events['time:timestamp'] if distribution == "Time" else deviation_events['event_count']),
             y= deviation_events['case:concept:name'].astype(str),
             mode='markers',
-            marker=dict(color='red', size=10, symbol='x'),
+            marker=dict(color=color, size=10, symbol='x'),
             name='Deviating Events',
             text=deviation_events['concept:name'],  # Hover text for deviation points
             customdata=deviation_events['time:timestamp'],
@@ -319,7 +323,7 @@ def plot_distribution(log_csv, distribution, type, aggregation, selected):
                 x=(missing_events['time:timestamp'] if distribution == "Time" else missing_events['event_count']),
                 y= missing_events['case:concept:name'].astype(str),
                 mode='markers',
-                marker=dict(color='gray', size=10, symbol='square'),
+                marker=dict(color='violet', size=10, symbol='square'),
                 name='Missing Events',
                 text=missing_events['concept:name'],  # Hover text for deviation points
                 hovertemplate=hovertemplate,

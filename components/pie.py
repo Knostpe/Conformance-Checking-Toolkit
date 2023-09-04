@@ -8,7 +8,7 @@ class Pie(Dashboard.Item):
 
     def generate_data(values):
         categories = ["Conformant Events", "Deviating Events", "Missing Events"]
-        colors = ["hsl(128, 70%, 50%)", "hsl(178, 70%, 50%)", "hsl(322, 70%, 50%)"]
+        colors = ["hsl(128, 70%, 70%)", "hsl(28, 100%, 43%)", "hsl(270, 100%, 50%)"]
 
         data = []
         for i, category in enumerate(categories):
@@ -22,9 +22,9 @@ class Pie(Dashboard.Item):
         return json.dumps(data, indent=2)
 
     DEFAULT_DATA = [
-        {"id": "Conformant Events", "label": "Conformant", "value": 10, "color": "hsl(128, 70%, 50%)"},
-        {"id": "Deviating Events", "label": "Deviating", "value": 10, "color": "hsl(178, 70%, 50%)"},
-        { "id": "Missing Events", "label": "Missing", "value": 10, "color": "hsl(322, 70%, 50%)"}
+        {"id": "Conformant Events", "label": "Conformant", "value": 10, "color": "hsl(128, 70%, 70%)"},
+        {"id": "Deviating Events", "label": "Deviating", "value": 10, "color": "hsl(28, 100%, 43%)"},
+        { "id": "Missing Events", "label": "Missing", "value": 10, "color": "hsl(270, 100%, 50%)"}
     ]
 
     def __init__(self, *args, **kwargs):

@@ -1,7 +1,6 @@
 from streamlit_elements import mui, elements, html
 from .dashboard import Dashboard
 
-
 class Metric(Dashboard.Item):
 
     def __call__(self, text):
