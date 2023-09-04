@@ -33,13 +33,13 @@ with c2:
     pn = None
 
     # 2. horizontal menu
-    selected = option_menu(None, ["Help Page", "Demo 1", "Demo 2", "Free Upload"],
+    selected = option_menu(None, ["Demo 1", "Demo 2", "Help Page", "Free Upload"],
         icons=['list-task', 'list-task','list-task', "cloud-upload"],
         menu_icon="cast", default_index=0, orientation="horizontal")
 
     if selected == "Help Page":
 
-            st.header("Everything you need to know to use CCTK")
+            st.header("Everything you need to know to get started with CCTK")
 
             st.markdown('#### FAQ')
             with st.expander("What is **Process Mining**?"):
@@ -51,7 +51,7 @@ with c2:
             with st.expander("What are **event logs**?"):
                 st.write(text_content.event_logs_introduction, unsafe_allow_html=True)
 
-            st.markdown('#### About the visual representations:')
+            st.markdown('#### About the visual representations')
 
             image_path_A = "data/images/metrics_info.png"  # Replace with the path to your image file
             image_path_B = "data/images/alignment_model_info.png"  # Replace with the path to your image file
